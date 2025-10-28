@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Co s čím souvisí? - geografická výzva</title>
+    <!-- Načtení Tailwind CSS pro moderní a responzivní design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Nastavení fontu a pozadí pro celou stránku - Jemná béžová */
+        body {
+            background-color: #f7f3e8; /* Světlá, teplá béžová */
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        /* Základní styl pro tlačítka odpovědí */
+        .answer-button {
+            transition: all 0.2s ease;
+            word-wrap: break-word;
+            white-space: normal;
+            height: auto;
+            min-height: 3.5rem; /* Zvýšení minimální výšky pro delší odpovědi */
+        }
+        /* Styly pro zpětnou vazbu po kliknutí */
+        .correct-answer {
+            background-color: #4ade80 !important; /* Green 400 */
+            border-color: #16a34a !important; /* Green 600 */
+            color: #166534 !important; /* Green 800 */
+        }
+        .incorrect-answer {
+            background-color: #f87171 !important; /* Red 400 */
+            border-color: #dc2626 !important; /* Red 600 */
+            color: #991b1b !important; /* Red 800 */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="w-full max-w-2xl bg-white p-6 md:p-10 rounded-3xl shadow-2xl border border-yellow-200">
+
+        <!-- Nadpis a Skóre -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800 tracking-tight leading-tight">
+                Co s čím souvisí? 🗺️
+            </h1>
+            <p class="text-2xl font-extrabold text-blue-600">
+                🌍 - Geografická výzva ⛰️
+            </p>
+            <p id="score-display" class="text-xl mt-2 font-medium text-gray-500">
+                Skóre: 0 / 0
+            </p>
+        </header>
+
+        <!-- Kvízové rozhraní -->
+        <div id="quiz-screen" class="space-y-6">
+            <p id="question-text" class="text-xl sm:text-2xl font-semibold text-gray-700 bg-yellow-50 p-4 rounded-xl border-l-4 border-blue-500">
+                ❓ Načítání otázky...
+            </p>
+            
+            <!-- Kontejner pro tlačítka odpovědí -->
+            <div id="answers-container" class="space-y-4">
+                <!-- Tlačítka se vygenerují JavaScriptem -->
+            </div>
+
+            <!-- Tlačítko Další otázka (skryté na začátku) -->
+            <button id="next-button" 
+                    class="w-full py-3 px-6 text-lg font-bold rounded-xl 
+                           bg-yellow-500 text-white shadow-md hover:bg-yellow-600 
+                           focus:outline-none focus:ring-4 focus:ring-yellow-300 
+                           disabled:opacity-50 transition-all duration-300 hidden"
+                    onclick="loadNextQuestion()"
+                    disabled>
+                👉 Další otázka
+            </button>
+            
+            <!-- Zpětná vazba (skrytá na začátku) -->
+            <div id="feedback-message" class="text-center font-bold text-lg hidden p-3 rounded-lg"></div>
+        </div>
+        
+        <!-- Úvodní/Konečná obrazovka (skrytá na začátku) -->
+        <div id="start-end-screen" class="text-center p-8 space-y-6">
+            <h2 id="start-end-title" class="text-3xl font-bold text-gray-800">Vítejte! 👋</h2>
+            <p id="start-end-text" class="text-lg text-gray-600">
+                Otestujte si, jak procesy a jevy na Zemi navzájem souvisí. Odpovězte na 10 náhodných otázek z témat Stavba Země, Klima a Eroze. 📚
+            </p>
+            <button id="start-button" 
+                    class="w-full py-4 px-8 text-xl font-bold rounded-xl 
+                           bg-blue-600 text-white shadow-xl hover:bg-blue-700 
+                           focus:outline-none focus:ring-4 focus:ring-blue-300 
+                           transition-all duration-300"
+                    onclick="startGame()">
+                🚀 Začít hrát
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA (Otázky a Odpovědi zaměřené na procesy a vztahy) ---
+        const questionsData = [
+            {
+                question: "Co je přímou **příčinou** pohybu litosférických desek, který vede ke vzniku kontinentů a pohoří?",
+                category: "Stavba Země (Proces)",
+                answer: "Konvekční proudy v zemském plášti (pomalé deformování hornin teplem)",
+                options: ["Tekuté vnější jádro, které otáčí celou planetou", "Gravitační přitažlivost Slunce a Měsíce", "Konvekční proudy v zemském plášti (pomalé deformování hornin teplem)", "Neustálá rotace Země kolem osy"]
+            },
+            {
+                question: "Který proces **vytváří** útvary jako 'pouštní hřib' a je způsoben obrušováním měkké skály pískem unášeným větrem?",
+                category: "Eroze (Proces)",
+                answer: "Abraze",
+                options: ["Deflace", "Sesuv půdy", "Abraze", "Vznik vádí"]
+            },
+            {
+                question: "Co **vede** ke vzniku suché oblasti na závětrné straně pohoří, kde již spadla většina srážek?",
+                category: "Klima (Vztah)",
+                answer: "Srážkový stín",
+                options: ["Vysoké albedo povrchu", "Tlaková níže", "Srážkový stín", "Konvekční proud v atmosféře"]
+            },
+            {
+                question: "Jaký **následek** má fakt, že je ve městech většina povrchu nahrazena tmavým asfaltem?",
+                category: "Počasí/Klima (Vztah/Proces)",
+                answer: "Zvyšuje pohlcování slunečních paprsků (snižuje albedo), což vede k vyšším teplotám.",
+                options: ["Zvyšuje rychlost deflace materiálu", "Způsobuje rychlejší obrušování (abrazi) budov větrem", "Zvyšuje pohlcování slunečních paprsků (snižuje albedo), což vede k vyšším teplotám.", "Vede ke vzniku tlakové níže nad městem"]
+            },
+            {
+                question: "Co je **hlavním důsledkem** sklonu rotační osy Země při jejím oběhu kolem Slunce?",
+                category: "Vlastnosti Země (Vztah)",
+                answer: "Střídání ročních období a rozdílná délka dne a noci (slunovraty/rovnodennosti)",
+                options: ["Rozdělení planety na severní a jižní polokouli", "Vznik zemského magnetického pole", "Střídání ročních období a rozdílná délka dne a noci (slunovraty/rovnodennosti)", "Tvorba rovnoběžek a poledníků"]
+            },
+            {
+                question: "Jaká je **souvislost** mezi tekutým vnějším jádrem a globální ochranou před slunečním větrem?",
+                category: "Stavba Země (Vztah)",
+                answer: "Pohyb tekutého železa a niklu vytváří magnetické pole, které chrání Zemi.",
+                options: ["Tekuté jádro tvoří astenosféru, po které se desky pohybují.", "Tekuté jádro způsobuje sesuvy půdy a laviny na povrchu.", "Pohyb tekutého železa a niklu vytváří magnetické pole, které chrání Zemi.", "Tekuté jádro umožňuje rychlou rotaci Země."]
+            },
+            {
+                question: "Popište **proces** vzniku dun:",
+                category: "Eroze (Proces)",
+                answer: "Jemný materiál je větrem odvát (deflace) z jiných míst a ukládán na jednom místě.",
+                options: ["Silná voda odplavuje lehké částice do moře", "Obrušování hornin (abraze) vádí", "Gravitace přitahuje těžký materiál ze svahů", "Jemný materiál je větrem odvát (deflace) z jiných míst a ukládán na jednom místě."]
+            },
+            {
+                question: "Co **aktivně snižuje** teplotu v zalesněných oblastech (např. ve městech) vlivem odpařování vody z listů rostlin?",
+                category: "Počasí/Klima (Proces)",
+                answer: "Transpirace (nebo odpar vody rostlinami), která spotřebovává teplo.",
+                options: ["Vysoké albedo listů", "Tlaková výše", "Gravitace, která stahuje chladný vzduch dolů", "Transpirace (nebo odpar vody rostlinami), která spotřebovává teplo."]
+            },
+            {
+                question: "Jak **ovlivňuje** oceánské klima teplotní výkyvy v porovnání s kontinentálním klimatem?",
+                category: "Klima (Vztah)",
+                answer: "Zmírňuje je, teplotní amplitudy (rozdíly) jsou nízké.",
+                options: ["Zesiluje je, teplotní amplitudy (rozdíly) jsou vysoké.", "Zmírňuje je, teplotní amplitudy (rozdíly) jsou nízké.", "Způsobuje polární den a noc.", "Vede ke vzniku pouze kontinentální kůry."]
+            },
+            {
+                question: "Proč se pouště nachází typicky v oblasti obratníků, a ne přímo u rovníku (tropů)?",
+                category: "Klima (Proces)",
+                answer: "Nad rovníkem prší (vzduch stoupá), u obratníků suchý vzduch klesá a nasává vlhkost.",
+                options: ["Gravitační eroze je na rovníku nejsilnější.", "Nad rovníkem je nižší albedo, u obratníků je nejvyšší tlaková níže.", "Nad rovníkem prší (vzduch stoupá), u obratníků suchý vzduch klesá a nasává vlhkost.", "Na obratnících dochází k abrazi, která odnáší vegetaci."]
+            },
+            {
+                question: "Která vrstva zemského tělesa má nižší hustotu a je silnější (až 70 km), a proto tvoří **základ kontinentů**?",
+                category: "Stavba Země (Vztah)",
+                answer: "Kontinentální kůra (tvořená převážně žulou)",
+                options: ["Oceánská kůra (tvořená převážně čedičem)", "Zemský plášť", "Kontinentální kůra (tvořená převážně žulou)", "Vnější jádro"]
+            },
+            {
+                question: "Jaký je **rozdíl** v působení vody a gravitace při erozních procesech?",
+                category: "Eroze (Vztah)",
+                answer: "Voda je přímý nosič, zatímco gravitace často jen strhává část, kterou už jiný faktor uvolnil.",
+                options: ["Voda vytváří pouštní hřiby, zatímco gravitace vytváří meandry.", "Gravitace způsobuje abrazi, zatímco voda deflaci.", "Voda je přímý nosič, zatímco gravitace často jen strhává část, kterou už jiný faktor uvolnil.", "Gravitace má vliv jen na oceánskou kůru."]
+            }
+        ];
+
+        // --- STAV HRY ---
+        let shuffledQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let answeredQuestionsCount = 0;
+        const totalQuestions = 10; // Maximální počet otázek pro jedno kolo
+
+        // --- DOM ELEMENTY ---
+        const app = document.getElementById('app');
+        const startEndScreen = document.getElementById('start-end-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const startEndTitle = document.getElementById('start-end-title');
+        const startEndText = document.getElementById('start-end-text');
+        const questionText = document.getElementById('question-text');
+        const answersContainer = document.getElementById('answers-container');
+        const scoreDisplay = document.getElementById('score-display');
+        const nextButton = document.getElementById('next-button');
+        const feedbackMessage = document.getElementById('feedback-message');
+
+        // --- POMOCNÉ FUNKCE ---
+
+        /**
+         * Náhodně zamíchá pole.
+         * @param {Array} array
+         * @returns {Array} Zamíchané pole.
+         */
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        /**
+         * Inicializuje hru: vybere a zamíchá otázky.
+         */
+        function startGame() {
+            // Skrýt úvodní/konečnou obrazovku, zobrazit kvíz
+            startEndScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+
+            // Reset skóre a indexu
+            score = 0;
+            currentQuestionIndex = 0;
+            answeredQuestionsCount = 0;
+            updateScoreDisplay();
+            
+            // Vybrat 10 náhodných otázek a zamíchat je
+            shuffledQuestions = shuffleArray([...questionsData]).slice(0, totalQuestions);
+
+            loadNextQuestion();
+        }
+
+        /**
+         * Načte a zobrazí další otázku, nebo zobrazí konec hry.
+         */
+        function loadNextQuestion() {
+            // Skrýt zpětnou vazbu a tlačítko Další
+            feedbackMessage.classList.add('hidden');
+            nextButton.classList.add('hidden');
+            nextButton.disabled = true;
+
+            if (currentQuestionIndex >= totalQuestions || currentQuestionIndex >= shuffledQuestions.length) {
+                showEndScreen();
+                return;
+            }
+
+            const currentQ = shuffledQuestions[currentQuestionIndex];
+            questionText.textContent = `Otázka ${currentQuestionIndex + 1}/${totalQuestions}: ${currentQ.question}`;
+            answersContainer.innerHTML = '';
+
+            // Zamíchat možnosti pro aktuální otázku
+            const options = shuffleArray([...currentQ.options]);
+
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.className = 'answer-button w-full py-3 px-4 text-left text-lg font-semibold rounded-xl border-2 border-blue-300 bg-blue-100 text-gray-700 hover:bg-blue-200 hover:shadow-lg transition-all duration-200';
+                button.onclick = () => checkAnswer(button, option, currentQ.answer);
+                answersContainer.appendChild(button);
+            });
+            
+            // Povolit interakci s tlačítky
+            answersContainer.querySelectorAll('.answer-button').forEach(btn => btn.disabled = false);
+        }
+
+        /**
+         * Zkontroluje odpověď uživatele a poskytne zpětnou vazbu.
+         * @param {HTMLElement} clickedButton Tlačítko, na které bylo kliknuto.
+         * @param {string} selectedAnswer Vybraná odpověď.
+         * @param {string} correctAnswer Správná odpověď.
+         */
+        function checkAnswer(clickedButton, selectedAnswer, correctAnswer) {
+            // Zablokovat všechna tlačítka, aby uživatel nemohl kliknout znovu
+            answersContainer.querySelectorAll('.answer-button').forEach(btn => btn.disabled = true);
+            
+            // Zobrazit tlačítko Další
+            nextButton.classList.remove('hidden');
+            nextButton.disabled = false;
+            
+            // Zobrazit zpětnou vazbu
+            feedbackMessage.classList.remove('hidden');
+            
+            answeredQuestionsCount++; // Započítat zodpovězenou otázku
+
+            if (selectedAnswer === correctAnswer) {
+                score++;
+                clickedButton.classList.add('correct-answer');
+                feedbackMessage.textContent = '✅ Správně! Pokračujte na další otázku.';
+                feedbackMessage.className = 'text-center font-bold text-lg p-3 rounded-lg bg-green-200 text-green-800';
+            } else {
+                clickedButton.classList.add('incorrect-answer');
+                feedbackMessage.textContent = `❌ Špatně. Správná odpověď byla: ${correctAnswer}.`;
+                feedbackMessage.className = 'text-center font-bold text-lg p-3 rounded-lg bg-red-200 text-red-800';
+                
+                // Zvýraznit správnou odpověď, pokud ji uživatel nevybral
+                answersContainer.querySelectorAll('.answer-button').forEach(btn => {
+                    if (btn.textContent === correctAnswer) {
+                        btn.classList.add('correct-answer');
+                    }
+                });
+            }
+
+            updateScoreDisplay();
+            currentQuestionIndex++;
+        }
+
+        /**
+         * Aktualizuje zobrazení skóre na obrazovce.
+         */
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Skóre: ${score} / ${answeredQuestionsCount}`;
+        }
+
+        /**
+         * Zobrazí výslednou obrazovku po dokončení kvízu.
+         */
+        function showEndScreen() {
+            quizScreen.classList.add('hidden');
+            startEndScreen.classList.remove('hidden');
+
+            startEndTitle.textContent = `🎉 Konec hry! Váš výsledek: ${score} z ${totalQuestions} 🎉`;
+            
+            let resultMessage = '';
+            const percentage = (score / totalQuestions) * 100;
+
+            if (percentage === 100) {
+                resultMessage = '🏆 Fantastické! Znáte perfektně všechny souvislosti. Jste mistr zeměpisu! 🥇';
+            } else if (percentage >= 70) {
+                resultMessage = '👍 Velmi dobrý výkon! Většinu procesů chápete správně. Zopakujte si ty, které vám unikly. 🧠';
+            } else if (percentage >= 40) {
+                resultMessage = '🧐 Dobré základy. Doporučuji si projít materiály a zaměřit se na vztahy příčina-následek.';
+            } else {
+                resultMessage = '😔 Ještě je co zlepšovat. Pojmy si pořádně projděte a zkuste to znovu! 📖';
+            }
+            
+            startEndText.textContent = resultMessage;
+            document.getElementById('start-button').textContent = '🔄 Zkusit znovu';
+        }
+
+        // --- INICIALIZACE ---
+        // Zobrazit úvodní obrazovku při načtení
+        window.onload = function() {
+            quizScreen.classList.add('hidden');
+            startEndScreen.classList.remove('hidden');
+        };
+
+    </script>
+</body>
+</html>
